@@ -51,7 +51,7 @@ export default function Tree({ root, nodes = [] }: TreeProps) {
         </li>
       ))}
 
-      <li class={liClass}>
+      <li class={"flex gap-4 " + liClass}>
         <TreeNode id={crypto.randomUUID()} parentId={root} url="" />
       </li>
     </ul>

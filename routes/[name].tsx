@@ -2,7 +2,7 @@ import { Head } from "$fresh/runtime.ts";
 import { HandlerContext, Handlers, PageProps } from "$fresh/server.ts";
 import { reform } from "https://deno.land/x/reformdata@0.2.2/mod.ts";
 
-import { getNodes, upsertNode } from "../lib/db.ts";
+import { getNodes, upsertNode, deleteNode } from "../lib/db.ts";
 import Tree from "../islands/Tree.tsx";
 
 export const handler: Handlers = {
@@ -26,9 +26,24 @@ export const handler: Handlers = {
     const node = await upsertNode(formData["node"]);
 
     return new Response(null, {
-      status: 200,
+      status: 204,
     });
   },
+
+  async DELETE(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) {
+      return new Response(null, {
+        status: 400,
+      });
+    }
+
+    await deleteNode(id);
+    return new Response(null, {
+      status: 204,
+    });
+  }
 }
 
 export default function FIFO({ params, data }: PageProps) {

@@ -30,3 +30,12 @@ export async function upsertNode(data: Node) {
     return data;
   }
 }
+
+export async function deleteNode(id: string) {
+  const node = await getNode(id);
+
+  return kv.atomic()
+    .delete(["nodes", node.parentId, "pipe", id])
+    .delete(["nodes", id])
+    .commit();
+}
