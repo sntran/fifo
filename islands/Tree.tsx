@@ -1,4 +1,5 @@
-import { Node } from "../components/Node.tsx";
+import { TreeNode } from "../components/TreeNode.tsx";
+import { type Node } from "../lib/schema.ts";
 
 interface TreeProps {
   root: string;
@@ -43,7 +44,7 @@ export default function Tree({ root, nodes = [] }: TreeProps) {
                 before:z-10 before:text-white before:text-center
                 before:bg-green-500
               "
-            ><Node {...node} /></summary>
+            ><TreeNode {...node} /></summary>
 
             <Tree root={node.id}></Tree>
           </details>
@@ -51,7 +52,7 @@ export default function Tree({ root, nodes = [] }: TreeProps) {
       ))}
 
       <li class={liClass}>
-        <Node id={crypto.randomUUID()} from={root} url="" />
+        <TreeNode id={crypto.randomUUID()} parentId={root} url="" />
       </li>
     </ul>
   );

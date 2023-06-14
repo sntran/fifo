@@ -1,16 +1,33 @@
 import { Head } from "$fresh/runtime.ts";
 import { HandlerContext, Handlers, PageProps } from "$fresh/server.ts";
+import { reform } from "https://deno.land/x/reformdata@0.2.2/mod.ts";
 
+import { getNodes, upsertNode } from "../lib/db.ts";
 import Tree from "../islands/Tree.tsx";
 
 export const handler: Handlers = {
   // Displays the FIFO editor.
   async GET(request: Request, context: HandlerContext) {
+    const { pathname } = new URL(request.url);
+    const nodes = await getNodes(pathname);
     const response = await context.render({
-      nodes: [],
+      nodes,
     });
 
     return response;
+  },
+
+  // Partially updates the FIFO.
+  async PATCH(request: Request) {
+    const { pathname } = new URL(request.url);
+
+    const formData = reform(await request.formData());
+
+    const node = await upsertNode(formData["node"]);
+
+    return new Response(null, {
+      status: 200,
+    });
   },
 }
 

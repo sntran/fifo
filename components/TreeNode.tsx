@@ -1,23 +1,45 @@
+import { type Node } from "../lib/schema.ts";
+
+import { useComputed, useSignal, signal } from "@preact/signals";
 import { Button } from "./Button.tsx";
 
-export interface Node {
-  id: string;
-  from: string;
-  url: string;
-  method?: string;
+const loading = signal(false);
+
+// Reloads the page after a successfull submission.
+async function save(event: Event) {
+  event.preventDefault();
+  const form = event.target as HTMLFormElement;
+  const formData = new FormData(form);
+  const method = formData.get("_method") as string || form.method;
+
+  loading.value = true;
+
+  const response = await fetch(form.action, {
+    method,
+    body: formData,
+  });
+
+  if (response.ok) {
+    location.reload();
+    loading.value = false;
+  }
 }
 
-export function Node(props: Node) {
-  const { id, from, url, method = "POST" } = props;
+export function TreeNode(props: Node) {
+  const { id, parentId, url, method = "POST" } = props;
 
   return (
     <form
       method="POST"
       encType="multipart/form-data"
       class="inline-flex gap-4"
+      onSubmit={save}
     >
+      {/* Override submit method for our handler to update the FIFO */}
+      <input type="hidden" name="_method" value="PATCH" />
+
       <input type="hidden" name="node[id]" value={id} />
-      <input type="hidden" name="node[from]" value={from} />
+      <input type="hidden" name="node[parentId]" value={parentId} />
 
       <label>
         <select
@@ -45,6 +67,7 @@ export function Node(props: Node) {
       <div>
         <Button
           type="submit"
+          disabled={loading}
           class="
             px-2 py-1
             text-white bg-blue-600
