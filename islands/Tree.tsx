@@ -1,3 +1,5 @@
+import * as Snowflake from "https://deno.land/x/deno_snowflake@v1.0.1/snowflake.ts";
+
 import { TreeNode } from "../components/TreeNode.tsx";
 import { type Node } from "../lib/schema.ts";
 
@@ -34,6 +36,7 @@ export default function Tree({ root, nodes = [] }: TreeProps) {
           <details open={true} class="group">
             <summary
               class="
+                flex gap-4
                 before:absolute before:top-3 before:left-3
                 before:-translate-y-1/2
                 before:w-6 before:h-6
@@ -52,7 +55,7 @@ export default function Tree({ root, nodes = [] }: TreeProps) {
       ))}
 
       <li class={"flex gap-4 " + liClass}>
-        <TreeNode id={crypto.randomUUID()} parentId={root} url="" />
+        <TreeNode id={Snowflake.generate()} parentId={root} url="" />
       </li>
     </ul>
   );
