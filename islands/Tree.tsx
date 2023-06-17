@@ -1,14 +1,16 @@
 import * as Snowflake from "https://deno.land/x/deno_snowflake@v1.0.1/snowflake.ts";
 
-import { TreeNode } from "../components/TreeNode.tsx";
-import { type Node } from "../lib/schema.ts";
+import { Branch } from "../components/Branch.tsx";
+import { type Edge, type Node } from "../lib/schema.ts";
 
-interface TreeProps {
-  root: string;
-  nodes?: Node[];
+interface TreeProps extends Node {
+  edges: Array<Edge & {
+    source: TreeProps,
+    target: TreeProps,
+  }>
 }
 
-export default function Tree({ root, nodes = [] }: TreeProps) {
+export default function Tree(node: TreeProps) {
   const liClass = `
     my-4
     pl-12 border-l last:border-l-transparent
@@ -24,9 +26,17 @@ export default function Tree({ root, nodes = [] }: TreeProps) {
     after:bg-gray-200
   `;
 
+  const newNode = {id: Snowflake.generate(), url: "", edges: []};
+  const newEdge = {
+    sourceId: node.id,
+    targetId: newNode.id,
+    source: node,
+    target: newNode,
+  }
+
   return (
     <ul class="">
-      {nodes.map((node, index) => (
+      {node.edges.map((edge, index) => (
         // Without a key, Preact has to guess which elements have
         // changed when re-rendering.
         <li
@@ -47,15 +57,15 @@ export default function Tree({ root, nodes = [] }: TreeProps) {
                 before:z-10 before:text-white before:text-center
                 before:bg-green-500
               "
-            ><TreeNode {...node} /></summary>
+            ><Branch {...edge} /></summary>
 
-            <Tree root={node.id}></Tree>
+            <Tree {...edge.target!}></Tree>
           </details>
         </li>
       ))}
 
       <li class={"flex gap-4 " + liClass}>
-        <TreeNode id={Snowflake.generate()} parentId={root} url="" />
+        <Branch {...newEdge} />
       </li>
     </ul>
   );
