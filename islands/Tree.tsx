@@ -1,13 +1,15 @@
-import * as Snowflake from "https://deno.land/x/deno_snowflake@v1.0.1/snowflake.ts";
+import * as Snowflake from "snowflake";
 
 import { Branch } from "../components/Branch.tsx";
 import { type Edge, type Node } from "../lib/schema.ts";
 
 interface TreeProps extends Node {
-  edges: Array<Edge & {
-    source: TreeProps,
-    target: TreeProps,
-  }>
+  edges: Array<
+    Edge & {
+      source: TreeProps;
+      target: TreeProps;
+    }
+  >;
 }
 
 export default function Tree(node: TreeProps) {
@@ -26,13 +28,13 @@ export default function Tree(node: TreeProps) {
     after:bg-gray-200
   `;
 
-  const newNode = {id: Snowflake.generate(), url: "", edges: []};
+  const newNode = { id: Snowflake.generate(), url: "", edges: [] };
   const newEdge = {
     sourceId: node.id,
     targetId: newNode.id,
     source: node,
     target: newNode,
-  }
+  };
 
   return (
     <ul class="">
@@ -44,8 +46,7 @@ export default function Tree(node: TreeProps) {
           class={liClass}
         >
           <details open={true} class="group">
-            <summary
-              class="
+            <summary class="
                 flex gap-4
                 before:absolute before:top-3 before:left-3
                 before:-translate-y-1/2
@@ -56,8 +57,9 @@ export default function Tree(node: TreeProps) {
                 before:content-['+'] before:group-open:content-['-']
                 before:z-10 before:text-white before:text-center
                 before:bg-green-500
-              "
-            ><Branch {...edge} /></summary>
+              ">
+              <Branch {...edge} />
+            </summary>
 
             <Tree {...edge.target!}></Tree>
           </details>

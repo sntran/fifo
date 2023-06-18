@@ -1,9 +1,12 @@
-import * as Snowflake from "https://deno.land/x/deno_snowflake@v1.0.1/snowflake.ts";
-import { Node, Edge } from "./schema.ts";
+import * as Snowflake from "snowflake";
+import { Edge, Node } from "./schema.ts";
 
-const kv = await Deno.openKv();
+const kv = await Deno.openKv(Deno.env.get("DATABASE_URL"));
 
-function isMatch(object: Record<string, unknown>, source: Record<string, unknown>) {
+function isMatch(
+  object: Record<string, unknown>,
+  source: Record<string, unknown>,
+) {
   for (const [key, value] of Object.entries(source)) {
     if (object[key] !== value) {
       return false;
@@ -14,17 +17,17 @@ function isMatch(object: Record<string, unknown>, source: Record<string, unknown
 }
 
 type Query = {
-  create?: Record<string, unknown>,
-  data?: Record<string, unknown>,
-  include?: true | Record<string, unknown>,
-  select?: Record<string, unknown>,
-  update?: Record<string, unknown>,
-  where?: Record<string, unknown>,
-}
+  create?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+  include?: true | Record<string, unknown>;
+  select?: Record<string, unknown>;
+  update?: Record<string, unknown>;
+  where?: Record<string, unknown>;
+};
 
 const nodes = {
   async create({ data = {}, select, include }: Query = {}) {
-    const id = data.id || Snowflake.generate();
+    const id = (data?.id || Snowflake.generate()) as string;
     data.id = id;
 
     const { ok } = await kv.set(["nodes", id], data);
@@ -32,7 +35,11 @@ const nodes = {
       throw new Error("Can't save");
     }
 
-    return data;
+    if (select) {
+      if (include) {
+        return data;
+      }
+    }
   },
   async delete({ where = {}, select, include }: Query = {}) {
     const { id } = where;
@@ -40,19 +47,27 @@ const nodes = {
       return null;
     }
 
-    await kv.delete(["nodes", id]);
+    await kv.delete(["nodes", id as string]);
+
+    if (select) {
+      if (include) {
+        return where;
+      }
+    }
   },
   async findFirst({ where = {} }: Query = {}) {
     const { id, ...matcher } = where;
+    const prefix = ["nodes", id as string].filter(Boolean);
+
     if (id) {
-      const { value: node } = await kv.get<Node>(["nodes", id]);
+      const { value: node } = await kv.get<Node>(prefix);
       if (!node) {
         return node;
       }
       return isMatch(node, matcher) ? node : null;
     }
 
-    for await (const { value } of kv.list<Node>(["nodes"])) {
+    for await (const { value } of kv.list<Node>({ prefix })) {
       if (isMatch(value, matcher)) {
         return value;
       }
@@ -72,33 +87,59 @@ const nodes = {
     }
 
     return item;
-  }
-}
+  },
+};
 
 const edges = {
-  async create({ data = {}, select, include }: Query = {}) {
+  async create(
+    { data = {}, select, include }: Query = {},
+  ): Promise<Partial<Edge>> {
     const { sourceId, targetId } = data;
 
-    const key = ["edges", sourceId, targetId];
+    const key = ["edges", sourceId as string, targetId as string];
     const { ok } = await kv.set(key, data);
     if (!ok) {
       throw new Error("Can't save");
     }
 
+    // TODO:
+    if (select) {
+      return data;
+    }
+
+    // TODO:
+    if (include) {
+      return data;
+    }
+
     return data;
   },
-  async delete({ where = {}, select, include }: Query = {}) {
+  async delete(
+    { where = {}, select, include }: Query = {},
+  ): Promise<Partial<Edge> | null> {
     const { sourceId, targetId } = where;
     if (!sourceId && !targetId) {
       return null;
     }
 
-    await kv.delete(["edges", sourceId, targetId]);
+    await kv.delete(["edges", sourceId as string, targetId as string]);
+
+    if (select) {
+      return where;
+    }
+
+    if (include) {
+      return where;
+    }
+
+    return where;
   },
-  async findFirst({ where = {} }: Query = {}) {
+  async findFirst({ where = {} }: Query = {}): Promise<Partial<Edge> | null> {
     const { sourceId, targetId, ...matcher } = where;
     if (sourceId) {
-      const key = ["edges", sourceId, targetId].filter(Boolean);
+      const key = ["edges", sourceId as string, targetId as string].filter(
+        Boolean,
+      );
       const { value: edge } = await kv.get<Edge>(key);
       if (!edge) {
         return edge;
@@ -107,7 +148,9 @@ const edges = {
     }
 
     // No `sourceId` provided, so we retrieve all edges and match them.
-    for await (const { key, value: edge } of kv.list<Edge>(["edges"])) {
+    for await (
+      const { key, value: edge } of kv.list<Edge>({ prefix: ["edges"] })
+    ) {
       // If `targetId` is provided, check if the key contains it.
       if (targetId && key[2] !== targetId) {
         continue;
@@ -120,18 +163,22 @@ const edges = {
 
     return null;
   },
-  async findMany({ where = {} }: Query = {}) {
+  async findMany({ where = {} }: Query = {}): Promise<Edge[]> {
     const { sourceId, targetId, ...matcher } = where;
-    const prefix = ["edges", sourceId, targetId].filter(Boolean);
+    const prefix = ["edges", sourceId as string, targetId as string].filter(
+      Boolean,
+    );
     const results = [];
-    for await (const { key, value } of kv.list<Edge>({ prefix })) {
+    for await (const { value } of kv.list<Edge>({ prefix })) {
       if (isMatch(value, matcher)) {
         results.push(value);
       }
     }
     return results;
   },
-  async upsert({ create, update, where, select, include }: Query = {}) {
+  async upsert(
+    { create, update, where, select, include }: Query = {},
+  ): Promise<Partial<Edge>> {
     const item = await this.findFirst({ where, include, select });
     if (!item) {
       return this.create({ data: create, select, include });
@@ -143,20 +190,20 @@ const edges = {
     }
 
     return item;
-  }
-}
+  },
+};
 
 export const db = {
   nodes,
   edges,
-}
+};
 
 /**
  * Recursively gets
  * @param sourceId
  * @returns
  */
-export async function getTree(sourceId: string): Promise<Node> {
+export async function getTree(sourceId: string): Promise<Node | null> {
   const node = await db.nodes.findFirst({
     where: { id: sourceId },
   });
@@ -170,20 +217,14 @@ export async function getTree(sourceId: string): Promise<Node> {
   });
 
   for await (const edge of edges) {
+    // @ts-ignore extra property
     edge.source = node;
+    // @ts-ignore extra property
     edge.target = await getTree(edge.targetId);
   }
 
+  // @ts-ignore extra property
   node.edges = edges;
 
   return node;
-}
-
-export async function deleteNode(id: string) {
-  const node = await getNode(id);
-
-  return kv.atomic()
-    .delete(["nodes", node.parentId, "pipe", id])
-    .delete(["nodes", id])
-    .commit();
 }

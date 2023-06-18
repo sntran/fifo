@@ -14,7 +14,7 @@ export const handler: Handlers = {
     const fifo = await db.nodes.upsert({
       where: { id: pathname },
       create: { id: pathname, url: pathname, method: "POST" },
-    })
+    });
 
     const tree = await getTree(pathname);
 
@@ -27,13 +27,15 @@ export const handler: Handlers = {
   async PATCH(request: Request) {
     const { pathname } = new URL(request.url);
 
-    const { _action: action, edge } = reform(await request.formData());
-    const { sourceId, targetId, target } = edge as Edge;
+    const { _action: action = "upsert", edge } = reform(
+      await request.formData(),
+    );
+    // @ts-ignore we know the incoming data
+    const { sourceId, targetId, target } = edge;
     const rel = { sourceId, targetId };
     target.id = targetId;
 
     if (action === "upsert") {
-
       await db.nodes.upsert({
         where: { id: targetId },
         create: target,
@@ -45,24 +47,21 @@ export const handler: Handlers = {
         create: rel,
         update: rel,
       });
-
     } else if (action === "delete") {
-
       await db.edges.delete({
-        where: rel
+        where: rel,
       });
 
       await db.nodes.delete({
         where: { id: targetId },
       });
-
     }
 
     return new Response(null, {
       status: 204,
     });
   },
-}
+};
 
 export default function FIFO({ params, data }: PageProps) {
   const name = params.name;
@@ -73,14 +72,12 @@ export default function FIFO({ params, data }: PageProps) {
         <title>{name} FIFO</title>
       </Head>
 
-      <main
-        class="
+      <main class="
           mx-auto max-w-screen-md
           p-6
           text-white bg-[#2D2E2C]
           rounded
-        "
-      >
+        ">
         <h1 class="text-4xl font-bold mb-8">/{name}</h1>
 
         <Tree {...data} />

@@ -1,14 +1,15 @@
 import { type Edge, type Node } from "../lib/schema.ts";
 
-import { useComputed, useSignal, signal } from "@preact/signals";
+import { signal, useComputed, useSignal } from "@preact/signals";
 import { Button } from "./Button.tsx";
 
 const loading = signal(false);
 
 // Reloads the page after a successfull submission.
-async function save(event: SubmitEvent) {
+async function save(event: Event) {
   event.preventDefault();
   const form = event.target as HTMLFormElement;
+  // @ts-ignore SubmitEvent has `submitter`
   const formData = new FormData(form, event.submitter);
   const method = formData.get("_method") as string || form.method;
 
@@ -26,12 +27,12 @@ async function save(event: SubmitEvent) {
 }
 
 interface BrandProps extends Edge {
-  source: Node,
-  target: Node,
+  source: Node;
+  target: Node;
 }
 
 export function Branch(props: BrandProps) {
-  const { source, target: { id, url, method = "POST"} } = props;
+  const { source, target: { id, url, method = "POST" } } = props;
 
   return (
     <form
@@ -72,18 +73,24 @@ export function Branch(props: BrandProps) {
       <div class="flex gap-2">
         <button
           type="submit"
-          name="_action" value="upsert"
+          name="_action"
+          value="upsert"
           disabled={loading}
           class="
             disabled:opacity-50 disabled:cursor-wait
           "
-        >💾</button>
+        >
+          💾
+        </button>
 
         <button
           type="submit"
-          name="_action" value="delete"
+          name="_action"
+          value="delete"
           class="text-red-600"
-        >🗑</button>
+        >
+          🗑
+        </button>
       </div>
     </form>
   );
